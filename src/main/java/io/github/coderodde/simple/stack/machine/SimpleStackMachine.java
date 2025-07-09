@@ -258,16 +258,16 @@ public class SimpleStackMachine {
     }
     
     void advanceInstructionPointer() {
-        checkReserve(1);
+        checkTapeReserve(1);
         ++instructionPointer;
     }
     
     void advanceInstructionPointer(final int bytes) {
-        checkReserve(bytes);
+        checkTapeReserve(bytes);
         instructionPointer += bytes;
     }
     
-    void checkReserve(int bytesToReserve) {
+    void checkTapeReserve(int bytesToReserve) {
         if (instructionPointer + bytesToReserve >= tape.length) {
             final String exceptionMessage = 
                     String.format(

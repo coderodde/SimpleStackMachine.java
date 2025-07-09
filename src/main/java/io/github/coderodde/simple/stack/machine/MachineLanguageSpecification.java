@@ -14,7 +14,7 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
+            machine.checkTapeReserve(1);
             machine.advanceInstructionPointer();
         }
     }
@@ -24,7 +24,7 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1 + Long.BYTES);
+            machine.checkTapeReserve(1 + Long.BYTES);
             machine.advanceInstructionPointer();
             
             final long number = 
@@ -39,7 +39,7 @@ public final class MachineLanguageSpecification {
 
         @Override
         public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1);
+            machine.checkTapeReserve(1);
             machine.advanceInstructionPointer();
             machine.pop();
         }
@@ -50,7 +50,7 @@ public final class MachineLanguageSpecification {
 
         @Override
         public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1 + Long.BYTES);
+            machine.checkTapeReserve(1 + Long.BYTES);
             machine.advanceInstructionPointer();
             
             final long address = 
@@ -67,7 +67,7 @@ public final class MachineLanguageSpecification {
 
         @Override
         public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1 + 2 * Long.BYTES);
+            machine.checkTapeReserve(1 + 2 * Long.BYTES);
             machine.advanceInstructionPointer();
             
             final long address = 
@@ -106,7 +106,7 @@ public final class MachineLanguageSpecification {
 
         @Override
         public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1 + 2 * Long.BYTES);
+            machine.checkTapeReserve(1 + 2 * Long.BYTES);
             machine.requireStackSize(2);
             machine.advanceInstructionPointer();
             
@@ -187,7 +187,7 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
+            machine.checkTapeReserve(1);
             machine.requireStackSize(1);
             machine.push(machine.top());
             machine.advanceInstructionPointer();
@@ -199,7 +199,7 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
+            machine.checkTapeReserve(1);
             machine.requireStackSize(2);
             final long number1 = machine.pop();
             final long number2 = machine.pop();
@@ -213,7 +213,7 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
+            machine.checkTapeReserve(1);
             machine.requireStackSize(2);
             final long number1 = machine.pop();
             final long number2 = machine.pop();
@@ -230,18 +230,41 @@ public final class MachineLanguageSpecification {
         }
     }
     
+    public static final class TestInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1);
+            machine.requireStackSize(1);
+            final long number = machine.pop();
+            
+            if (number > 0L) {
+                machine.flags().aboveZeroFlag = true;
+                machine.flags().notZeroFlag   = true;
+            } else if (number < 0L) {
+                machine.flags().belowZeroFlag = true;
+                machine.flags().notZeroFlag   = true;
+            } else {
+                machine.flags().zeroFlag = true;
+                machine.flags().aboveZeroFlag = false;
+                machine.flags().belowZeroFlag = false;
+            }
+        }
+    }
+    
     public static final class UnconditionalJumpInstructionImplementation 
             implements InstructionImplementation {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1 + Long.BYTES);
+            machine.checkTapeReserve(1 + Long.BYTES);
             machine.advanceInstructionPointer();
             final int jumpAddress = 
                     (int) machine.readNumberFromTape(
                                machine.getInstructionPointer());
             
-            machine.checkReserve(jumpAddress);
+            machine.checkTapeReserve(jumpAddress);
             machine.setInstructionPointer(jumpAddress);
         }
     }
@@ -251,9 +274,262 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
+            machine.checkTapeReserve(1);
             machine.requestHalt();
         }
     }
     
+    public static final class CallInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            final long address = machine.readNumber();
+            machine.advanceInstructionPointer(Long.BYTES);
+            machine.push(machine.getInstructionPointer());
+            machine.setInstructionPointer((int) address);
+        }
+    }
+    
+    public static final class ReturnInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1);
+            machine.advanceInstructionPointer();
+            
+            final long address = machine.pop();
+            machine.setInstructionPointer((int) address);
+        }
+    }
+    
+    public static final class JumpIfZeroInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().zeroFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfNotZeroInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().notZeroFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfBelowZeroInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().belowZeroFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfAboveZeroInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().aboveZeroFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfEqualInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().equalFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfNotEqualInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (!machine.flags().equalFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfAboveInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().aboveFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfAboveOrEqualInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().aboveFlag || machine.flags().equalFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfBelowInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().belowFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class JumpIfBelowOrEqualInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.advanceInstructionPointer();
+            
+            if (machine.flags().belowFlag || machine.flags().equalFlag) {
+                final long address = machine.readNumber();
+                machine.setInstructionPointer((int) address);
+            }
+        }
+    }
+    
+    public static final class PrintNumberInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1);
+            machine.requireStackSize(1);
+            machine.advanceInstructionPointer();
+            machine.printNumber(machine.pop());
+        }
+    }
+    
+    public static final class PrintStringInstructionImplementation 
+            implements InstructionImplementation {
+        
+        @Override
+        public void execute(final SimpleStackMachine machine) {
+            machine.checkTapeReserve(1);
+            machine.requireStackSize(2);
+            machine.advanceInstructionPointer();
+            
+            final int numberOfChars    = (int) machine.pop();
+            final int stringStartIndex = (int) machine.pop();
+            final int numberOfNumbers  = 
+                    (int)(numberOfChars / Long.BYTES 
+                       + (numberOfChars % Long.BYTES == 0 ? 0 : 1));
+            
+            final long[] stringData = new long[numberOfNumbers];
+            
+            for (int p = stringStartIndex, i = 0; i < numberOfNumbers; ++i) {
+                stringData[i] = machine.readNumber();
+                machine.advanceInstructionPointer(Long.BYTES);
+            }
+            
+            final byte[] asciiString = new byte[numberOfChars];
+            
+            for (int byteIndex = 0; byteIndex < numberOfChars; ++byteIndex) {
+                final long textChunk = stringData[byteIndex / Long.BYTES];
+                final byte byteChar  = 
+                        (byte)(((textChunk) >>> 
+                                 Byte.SIZE * (byteIndex % Long.BYTES)) & 0xff);
+                
+                asciiString[byteIndex] = byteChar;
+            }
+            
+            final StringBuilder sb = new StringBuilder(numberOfChars);
+            
+            for (int i = 0; i < asciiString.length; ++i) {
+                sb.append((char)(asciiString[i]));
+            }
+            
+            System.out.println(sb.toString());
+        }
+    }
+    
+    public static final class ReadStringInstructionImplementation 
+            implements InstructionImplementation {
+
+        @Override
+        public void execute(SimpleStackMachine machine) {
+            throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        }
+    }
+    
+    public static final class ReadNumberInstructionImplementation 
+            implements InstructionImplementation {
+
+        @Override
+        public void execute(SimpleStackMachine machine) {
+            machine.checkTapeReserve(1);
+            machine.requireStackSize(1);
+            machine.advanceInstructionPointer();
+            machine.readNumber();
+        }
+    }
 }
