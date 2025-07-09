@@ -4,7 +4,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Objects;
 import java.util.Scanner;
-import java.util.function.BinaryOperator;
 
 /**
  * This class implements the actual stack virtual machine.
@@ -14,277 +13,16 @@ import java.util.function.BinaryOperator;
  */
 public class SimpleStackMachine {
     
-    public abstract class InstructionImplementation {
-        
-        private SimpleStackMachine machine;
-        
-        public void setMachine(final SimpleStackMachine machine) {
-            this.machine = machine;
-        } 
-        
-        public abstract void execute(final SimpleStackMachine machine);
-    }
-    
-    public static final class NopInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
-            machine.advanceInstructionPointer();
-        }
-    }
-    
-    public static class PushInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1 + Long.BYTES);
-            machine.advanceInstructionPointer();
-            
-            final long number = 
-                    machine.readNumberFromTape(machine.instructionPointer);
-            
-            machine.stack.push(number);
-        }
-    }
-    
-    public static final class PopInstructionImplementation 
-            extends InstructionImplementation {
-
-        @Override
-        public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1);
-            machine.advanceInstructionPointer();
-            machine.stack.pop();
-        }
-    }
-    
-    public static final class LoadInstructionImplementation 
-            extends InstructionImplementation {
-
-        @Override
-        public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1 + Long.BYTES);
-            machine.advanceInstructionPointer();
-            
-            final long address = 
-                    machine.readNumberFromTape(machine.instructionPointer);
-            
-            final long datum = machine.tape[(int) address];
-            
-            machine.stack.push(datum);
-        }
-    }
-    
-    public static final class StoreInstructionImplementation 
-            extends InstructionImplementation {
-
-        @Override
-        public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1 + 2 * Long.BYTES);
-            machine.advanceInstructionPointer();
-            
-            final long address = 
-                    machine.readNumberFromTape(machine.instructionPointer);
-            
-            machine.advanceInstructionPointer(Long.BYTES);
-            
-            final long datum = machine.readNumberFromTape(machine.instructionPointer);
-            
-            machine.writeNumberToTape((int) address, datum);
-            machine.advanceInstructionPointer(Long.BYTES);
-        }
-    }
-    
-    /**
-     * Delegates to the pop operation.
-     */
-    public static final class ConstInstructionImplementation 
-            extends PushInstructionImplementation {
-        
-    }
-    
-    public static class BinaryArithmeticInstructionImplementation 
-            extends InstructionImplementation {
-        
-        private final BinaryOperator<Long> func;
-        
-        public BinaryArithmeticInstructionImplementation(
-                final BinaryOperator<Long> func) {
-            this.func = func;
-        }
-
-        @Override
-        public void execute(SimpleStackMachine machine) {
-            machine.checkReserve(1 + 2 * Long.BYTES);
-            machine.requireStackSize(2);
-            machine.advanceInstructionPointer();
-            
-            final long number1 = 
-                    machine.readNumberFromTape(machine.instructionPointer);
-            
-            final long number2 = 
-                    machine.readNumberFromTape(
-                            machine.instructionPointer + Long.BYTES);
-            
-            machine.stack.pop();
-            machine.stack.pop();
-            machine.stack.push(func.apply(number1, number2));
-            machine.advanceInstructionPointer(Long.BYTES * 2);
-        }
-    }
-    
-    public static final class AddInstructionImplementation 
-            extends BinaryArithmeticInstructionImplementation {
-
-        public AddInstructionImplementation() {
-            super((n1, n2) -> { return n1 + n2; });
-        }
-    }
-    
-    public static final class SubInstructionImplementation 
-            extends BinaryArithmeticInstructionImplementation {
-
-        public SubInstructionImplementation() {
-            super((n1, n2) -> { return n1 - n2; });
-        }
-    }
-    
-    public static final class MultiplyInstructionImplementation 
-            extends BinaryArithmeticInstructionImplementation {
-
-        public MultiplyInstructionImplementation() {
-            super((n1, n2) -> { return n1 * n2; });
-        }
-    }
-    
-    public static final class DivideInstructionImplementation 
-            extends BinaryArithmeticInstructionImplementation {
-
-        public DivideInstructionImplementation() {
-            super((n1, n2) -> { return n1 / n2; });
-        }
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            try {
-                super.execute(machine);
-            } catch (final ArithmeticException ex) {
-                throw new StackMachineException(ex.getMessage());
-            }
-        }
-    }
-    
-    public static final class ModuloInstructionImplementation 
-            extends BinaryArithmeticInstructionImplementation {
-
-        public ModuloInstructionImplementation() {
-            super((n1, n2) -> { return n1 % n2; });
-        }
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            try {
-                super.execute(machine);
-            } catch (final ArithmeticException ex) {
-                throw new StackMachineException(ex.getMessage());
-            }
-        }
-    }
-    
-    public static final class DuplicateInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
-            machine.requireStackSize(1);
-            machine.stack.push(machine.stack.element());
-            machine.advanceInstructionPointer();
-        }
-    }
-    
-    public static final class SwapInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
-            machine.requireStackSize(2);
-            final long number1 = machine.stack.pop();
-            final long number2 = machine.stack.pop();
-            machine.stack.push(number1);
-            machine.stack.push(number2);
-        }
-    }
-    
-    public static final class CompareInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
-            machine.requireStackSize(2);
-            final long number1 = machine.stack.pop();
-            final long number2 = machine.stack.pop();
-            final int cmp = Long.compare(number1, 
-                                         number2);
-            
-            if (cmp < 0) {
-                machine.flags.belowFlag = true;
-            } else if (cmp > 0) {
-                machine.flags.aboveFlag = true;
-            } else {
-                machine.flags.equalFlag = true;
-            }
-        }
-    }
-    
-    public static final class UnconditionalJumpInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1 + Long.BYTES);
-            machine.advanceInstructionPointer();
-            final int jumpAddress = 
-                    (int) machine.readNumberFromTape(
-                               machine.instructionPointer);
-            
-            machine.checkReserve(jumpAddress);
-            machine.instructionPointer = jumpAddress;
-        }
-    }
-    
-    public static final class UnconditionalJumpInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1 + Long.BYTES);
-            machine.advanceInstructionPointer();
-            final int jumpAddress = 
-                    (int) machine.readNumberFromTape(
-                               machine.instructionPointer);
-            
-            machine.checkReserve(jumpAddress);
-            machine.instructionPointer = jumpAddress;
-        }
-    }
-    
-    public static final class HaltInstructionImplementation 
-            extends InstructionImplementation {
-        
-        @Override
-        public void execute(final SimpleStackMachine machine) {
-            machine.checkReserve(1);
-            machine.haltIsRequested = true;
-        }
-    }
     
     private final Scanner scanner = new Scanner(System.in);
+    
+    int getInstructionPointer() {
+        return instructionPointer;
+    }
+    
+    void setInstructionPointer(final int address) {
+        this.instructionPointer = address;
+    }
     
     String readString() {
         return scanner.next();
@@ -295,18 +33,52 @@ public class SimpleStackMachine {
     }
     
     void printString(final int characterTotal, 
-                     final long[] numbers) {
-        final byte[] bytes = new byte[Long.BYTES * numbers.length];
-        
+                     final long[] stringByteData) {
         final StringBuilder sb = new StringBuilder();
         
+        loadBytes(characterTotal,
+                  stringByteData,
+                  sb);
         
+        // Note, no "ln". The client programmer must append an '\n' to the end
+        // of the printed string in order to have a new line:
+        System.out.print(sb.toString());
+    }
+    
+    void loadBytes(final int stringLength,
+                   final long[] stringByteData, 
+                   final StringBuilder sb) {
         
-        return sb.toString();
+        for (int byteIndex = 0; 
+                 byteIndex < stringLength
+                ; 
+                 byteIndex++) {
+            final int stringByteDataIndex = byteIndex / Byte.SIZE;
+            final int localByteIndex      = byteIndex % Byte.SIZE;
+            
+            final byte b =
+                    (byte)((stringByteData[stringByteDataIndex] >>>
+                            localByteIndex * Byte.SIZE) & 0xff);
+            
+            sb.append((char)(b & 0xff));
+        }
     }
     
     void printNumber(final long number) {
-        System.out.println(number);
+        System.out.print(number);
+    }
+    
+    long top() {
+        requireStackSize(1);
+        return stack.element();
+    }
+    
+    long pop() {
+        return stack.pop();
+    }
+    
+    void push(final long datum) {
+        stack.push(datum);
     }
     
     /** 
@@ -324,15 +96,26 @@ public class SimpleStackMachine {
          * ended up with equality.
          */
         boolean equalFlag = false;
-        
+       
         /**
          * Set to {@code true} if and only if the most previous comparison ended
          * up with non-equality.
          */
         boolean notEqualFlag = false;
         
+        /**
+         * 
+         */
         boolean zeroFlag = false;
+        
+        /**
+         * 
+         */
         boolean notZeroFlag = false;
+        
+        boolean aboveZeroFlag = false;
+        
+        boolean belowZeroFlag = false;
         
         /**
          * Set to {@code true} if and only if the most previous comparison 
@@ -347,6 +130,19 @@ public class SimpleStackMachine {
          * most one.
          */
         boolean belowFlag = false;
+        
+        void unsetAll() {
+            equalFlag     = false;
+            notEqualFlag  = false;
+            aboveZeroFlag = false;
+            belowZeroFlag = false;
+            zeroFlag      = false;
+            notZeroFlag   = false;
+            aboveFlag     = false;
+            belowFlag     = false;
+        }
+        
+        
     }
     
     private final ProcessorFlags flags = new ProcessorFlags();
@@ -364,6 +160,10 @@ public class SimpleStackMachine {
     private int instructionPointer = 0;
     
     private boolean haltIsRequested = false;
+    
+    public ProcessorFlags flags() {
+        return flags;
+    }
     
     public void execute(final byte[] programBytes) {
         Objects.requireNonNull(programBytes,
@@ -399,7 +199,7 @@ public class SimpleStackMachine {
         System.out.println("Hello World!");
     }
     
-    private void requireStackSize(final int requestedSize) {
+    void requireStackSize(final int requestedSize) {
         if (stack.size() < requestedSize) {
             throw new StackMachineException(
                     String.format("'stack.size()' is %d, 'requestedSize' is %d",
@@ -408,7 +208,7 @@ public class SimpleStackMachine {
         }
     }
     
-    private long readNumberFromTape(final int address) {
+    long readNumberFromTape(final int address) {
         if (address + Long.BYTES > tape.length) {
             final String exceptionMessage = 
                     String.format(
@@ -423,13 +223,13 @@ public class SimpleStackMachine {
         }
         
         final long nb0 = tape[address];
-        final long nb1 = tape[address + 1] << 1;
-        final long nb2 = tape[address + 2] << 2;
-        final long nb3 = tape[address + 3] << 3;
-        final long nb4 = tape[address + 4] << 4;
-        final long nb5 = tape[address + 5] << 5;
-        final long nb6 = tape[address + 6] << 6;
-        final long nb7 = tape[address + 7] << 7;
+        final long nb1 = tape[address + 1] << 8;
+        final long nb2 = tape[address + 2] << 16;
+        final long nb3 = tape[address + 3] << 24;
+        final long nb4 = tape[address + 4] << 32;
+        final long nb5 = tape[address + 5] << 40;
+        final long nb6 = tape[address + 6] << 48;
+        final long nb7 = tape[address + 7] << 56;
         
         return nb0 |
                nb1 |
@@ -441,7 +241,7 @@ public class SimpleStackMachine {
                nb7;
     }
     
-    private void writeNumberToTape(final int address, long number) {
+    void writeNumberToTape(final int address, long number) {
         
         final byte[] bytes = new byte[Long.BYTES];
         
@@ -480,5 +280,9 @@ public class SimpleStackMachine {
             
             throw new StackMachineException(exceptionMessage);
         }
+    }
+    
+    void requestHalt() {
+        haltIsRequested = true;
     }
 }
