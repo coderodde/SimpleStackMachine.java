@@ -13,7 +13,6 @@ import java.util.Scanner;
  */
 public class SimpleStackMachine {
     
-    
     private final Scanner scanner = new Scanner(System.in);
     
     int getInstructionPointer() {
@@ -22,14 +21,6 @@ public class SimpleStackMachine {
     
     void setInstructionPointer(final int address) {
         this.instructionPointer = address;
-    }
-    
-    String readString() {
-        return scanner.next();
-    }
-    
-    long readNumber() {
-        return scanner.nextLong();
     }
     
     void printString(final int characterTotal, 
@@ -64,20 +55,16 @@ public class SimpleStackMachine {
         }
     }
     
-    void printNumber(final long number) {
-        System.out.print(number);
-    }
-    
-    long top() {
+    int top() {
         requireStackSize(1);
         return stack.element();
     }
     
-    long pop() {
+    int pop() {
         return stack.pop();
     }
     
-    void push(final long datum) {
+    void push(final int datum) {
         stack.push(datum);
     }
     
@@ -104,17 +91,23 @@ public class SimpleStackMachine {
         boolean notEqualFlag = false;
         
         /**
-         * 
+         * Set to {@code true} if the comparison did not end with equality.
          */
         boolean zeroFlag = false;
         
         /**
-         * 
+         * Set to {@code true} if the test argument was not zero.
          */
         boolean notZeroFlag = false;
         
+        /**
+         * Set to {@code true} if the test argument was above zero.
+         */
         boolean aboveZeroFlag = false;
         
+        /**
+         * Set to {@code true} if the test argument was below zero.
+         */
         boolean belowZeroFlag = false;
         
         /**
@@ -131,20 +124,24 @@ public class SimpleStackMachine {
          */
         boolean belowFlag = false;
         
+        /**
+         * Clears all the flags.
+         */
         void unsetAll() {
             equalFlag     = false;
             notEqualFlag  = false;
+            aboveFlag     = false;
+            belowFlag     = false;
             aboveZeroFlag = false;
             belowZeroFlag = false;
             zeroFlag      = false;
             notZeroFlag   = false;
-            aboveFlag     = false;
-            belowFlag     = false;
         }
-        
-        
     }
     
+    /**
+     * The flags object.
+     */
     private final ProcessorFlags flags = new ProcessorFlags();
     
     /**
@@ -155,10 +152,16 @@ public class SimpleStackMachine {
     /**
      * The operand stack. 
      */
-    private final Deque<Long> stack = new ArrayDeque<>();
+    private final Deque<Integer> stack = new ArrayDeque<>();
 
+    /**
+     * The instruction pointer.
+     */
     private int instructionPointer = 0;
     
+    /**
+     * The halting flag. When set to {@code true}, execution must end.
+     */
     private boolean haltIsRequested = false;
     
     public ProcessorFlags flags() {
@@ -196,7 +199,7 @@ public class SimpleStackMachine {
     }
     
     public static void main(String[] args) {
-        System.out.println("Hello World!");
+        
     }
     
     void requireStackSize(final int requestedSize) {
@@ -208,53 +211,45 @@ public class SimpleStackMachine {
         }
     }
     
-    long readNumberFromTape(final int address) {
-        if (address + Long.BYTES > tape.length) {
+    int readWordFromTape(final int address) {
+        if (address + Integer.BYTES > tape.length) {
             final String exceptionMessage = 
                     String.format(
-                            "address(%d) + Long.BYTES(%d) > " + 
+                            "address(%d) + Integer.BYTES(%d) > " + 
                             "tape.length(%d) = %d", 
                             address, 
-                            Long.BYTES, 
+                            Integer.BYTES, 
                             tape.length, 
-                            Long.BYTES + tape.length);
+                            Integer.BYTES + tape.length);
             
             throw new StackMachineException(exceptionMessage);
         }
         
-        final long nb0 = tape[address];
-        final long nb1 = tape[address + 1] << 8;
-        final long nb2 = tape[address + 2] << 16;
-        final long nb3 = tape[address + 3] << 24;
-        final long nb4 = tape[address + 4] << 32;
-        final long nb5 = tape[address + 5] << 40;
-        final long nb6 = tape[address + 6] << 48;
-        final long nb7 = tape[address + 7] << 56;
+        final int nb0 = Byte.toUnsignedInt(tape[address]);
+        final int nb1 = Byte.toUnsignedInt(tape[address + 1]) << 8;
+        final int nb2 = Byte.toUnsignedInt(tape[address + 2]) << 16;
+        final int nb3 = Byte.toUnsignedInt(tape[address + 3]) << 24;
         
         return nb0 |
                nb1 |
                nb2 |
-               nb3 |
-               nb4 |
-               nb5 |
-               nb6 |
-               nb7;
+               nb3;
     }
     
-    void writeNumberToTape(final int address, long number) {
+    void writeWordToTape(final int address, int number) {
         
-        final byte[] bytes = new byte[Long.BYTES];
+        final byte[] bytes = new byte[Integer.BYTES];
         
         bytes[0] = (byte) (number & 0xffL);
         bytes[1] = (byte)((number >>= Byte.SIZE) & 0xffL);
         bytes[2] = (byte)((number >>= Byte.SIZE) & 0xffL);
-        bytes[3] = (byte)((number >>= Byte.SIZE) & 0xffL);
-        bytes[4] = (byte)((number >>= Byte.SIZE) & 0xffL);
-        bytes[5] = (byte)((number >>= Byte.SIZE) & 0xffL);
-        bytes[6] = (byte)((number >>= Byte.SIZE) & 0xffL);
-        bytes[7] = (byte)((number >>  Byte.SIZE) & 0xffL);
+        bytes[3] = (byte)((number >>  Byte.SIZE) & 0xffL);
         
-        System.arraycopy(bytes, 0, tape, address, Long.BYTES);
+        System.arraycopy(bytes, 
+                         0,
+                         tape,
+                         address, 
+                         Integer.BYTES);
     }
     
     void advanceInstructionPointer() {
