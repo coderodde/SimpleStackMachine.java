@@ -236,14 +236,14 @@ public class SimpleStackMachine {
                nb3;
     }
     
-    void writeWordToTape(final int address, int number) {
+    void writeWordToTape(final int address, int word) {
         
         final byte[] bytes = new byte[Integer.BYTES];
         
-        bytes[0] = (byte) (number & 0xffL);
-        bytes[1] = (byte)((number >>= Byte.SIZE) & 0xffL);
-        bytes[2] = (byte)((number >>= Byte.SIZE) & 0xffL);
-        bytes[3] = (byte)((number >>  Byte.SIZE) & 0xffL);
+        bytes[0] = (byte) (word & 0xffL);
+        bytes[1] = (byte)((word >>= Byte.SIZE) & 0xffL);
+        bytes[2] = (byte)((word >>= Byte.SIZE) & 0xffL);
+        bytes[3] = (byte)((word >>  Byte.SIZE) & 0xffL);
         
         System.arraycopy(bytes, 
                          0,

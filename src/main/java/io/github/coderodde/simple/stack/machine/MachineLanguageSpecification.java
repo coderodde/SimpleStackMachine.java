@@ -39,7 +39,7 @@ public final class MachineLanguageSpecification {
 
         @Override
         public void execute(SimpleStackMachine machine) {
-            machine.checkTapeReserve(Integer.BYTES);
+            machine.checkTapeReserve(1);
             machine.advanceInstructionPointer();
             machine.pop();
         }
@@ -48,14 +48,18 @@ public final class MachineLanguageSpecification {
     public static final class LoadInstructionImplementation 
             implements InstructionImplementation {
 
+        /**
+         * Pops the address and pushes the word at that address to the stack.
+         * 
+         * @param machine the target machine.
+         */
         @Override
         public void execute(SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
+            machine.requireStackSize(1);
             machine.advanceInstructionPointer();
             
-            final int address = 
-                    machine.readWordFromTape(machine.getInstructionPointer());
-            
+            final int address = machine.pop();
             final int datum = machine.readWordFromTape(address);
             
             machine.push(datum);
@@ -65,22 +69,21 @@ public final class MachineLanguageSpecification {
     public static final class StoreInstructionImplementation 
             implements InstructionImplementation {
 
+        /**
+         * Pops the word and the address and stores the word at the address.
+         * 
+         * @param machine the target machine.
+         */
         @Override
         public void execute(SimpleStackMachine machine) {
+            machine.checkTapeReserve(1);
             machine.requireStackSize(2);
-            machine.checkTapeReserve(2 * Integer.BYTES);
             machine.advanceInstructionPointer();
             
-            final int address = 
-                    machine.readWordFromTape(machine.getInstructionPointer());
+            final int address = machine.pop();
+            final int word    = machine.pop();
             
-            machine.advanceInstructionPointer(Integer.BYTES);
-            
-            final int datum = machine.readWordFromTape(
-                    machine.getInstructionPointer());
-            
-            machine.writeWordToTape(address, datum);
-            machine.advanceInstructionPointer(Integer.BYTES);
+            machine.writeWordToTape(address, word);
         }
     }
     
@@ -91,7 +94,7 @@ public final class MachineLanguageSpecification {
             extends PushInstructionImplementation {
         
         @Override
-        public void execute(SimpleStackMachine machine) {
+        public void execute(final SimpleStackMachine machine) {
             super.execute(machine);
         }
     }
@@ -112,19 +115,10 @@ public final class MachineLanguageSpecification {
             machine.requireStackSize(2);
             machine.advanceInstructionPointer();
             
-            final int number1 = 
-                    machine.readWordFromTape(machine.getInstructionPointer());
+            final Integer word1 = machine.pop();
+            final Integer word2 = machine.pop();
             
-            machine.advanceInstructionPointer(Integer.BYTES);
-            
-            final int number2 = 
-                    machine.readWordFromTape(
-                            machine.getInstructionPointer());
-            
-            machine.pop();
-            machine.pop();
-            machine.push(func.apply(number1, number2));
-            machine.advanceInstructionPointer(Long.BYTES * 2);
+            machine.push(func.apply(word1, word2));
         }
     }
     
@@ -205,8 +199,11 @@ public final class MachineLanguageSpecification {
         public void execute(final SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
             machine.requireStackSize(2);
+            machine.advanceInstructionPointer();
+            
             final int number1 = machine.pop();
             final int number2 = machine.pop();
+            
             machine.push(number1);
             machine.push(number2);
         }
@@ -219,17 +216,23 @@ public final class MachineLanguageSpecification {
         public void execute(final SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
             machine.requireStackSize(2);
-            final long number1 = machine.pop();
-            final long number2 = machine.pop();
-            final int cmp = Long.compare(number1, 
-                                         number2);
+            machine.advanceInstructionPointer();
             
+            final int number1 = machine.pop();
+            final int number2 = machine.pop();
+            
+            final int cmp = Integer.compare(number1, 
+                                            number2);
             if (cmp < 0) {
-                machine.flags().belowFlag = true;
+                machine.flags().belowFlag    = true;
+                machine.flags().notEqualFlag = true;
             } else if (cmp > 0) {
-                machine.flags().aboveFlag = true;
+                machine.flags().aboveFlag    = true;
+                machine.flags().notEqualFlag = true;
             } else {
                 machine.flags().equalFlag = true;
+                machine.flags().aboveFlag = false;
+                machine.flags().belowFlag = false;
             }
         }
     }
@@ -250,7 +253,7 @@ public final class MachineLanguageSpecification {
                 machine.flags().belowZeroFlag = true;
                 machine.flags().notZeroFlag   = true;
             } else {
-                machine.flags().zeroFlag = true;
+                machine.flags().zeroFlag      = true;
                 machine.flags().aboveZeroFlag = false;
                 machine.flags().belowZeroFlag = false;
             }
@@ -260,13 +263,17 @@ public final class MachineLanguageSpecification {
     public static final class UnconditionalJumpInstructionImplementation 
             implements InstructionImplementation {
         
+        /**
+         * Pops the jump address and jumps to it.
+         * 
+         * @param machine the target machine.
+         */
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.checkTapeReserve(1);
+            machine.requireStackSize(1);
             machine.advanceInstructionPointer();
-            final int jumpAddress = 
-                    (int) machine.readWordFromTape(
-                               machine.getInstructionPointer());
+            final int jumpAddress = machine.pop();
             
             machine.checkTapeReserve(jumpAddress);
             machine.setInstructionPointer(jumpAddress);
@@ -279,6 +286,7 @@ public final class MachineLanguageSpecification {
         @Override
         public void execute(final SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
+            machine.advanceInstructionPointer();
             machine.requestHalt();
         }
     }
@@ -286,13 +294,19 @@ public final class MachineLanguageSpecification {
     public static final class CallInstructionImplementation 
             implements InstructionImplementation {
         
+        /**
+         * Pops the call address, pushes the return address and enters a 
+         * function.
+         * 
+         * @param machine the target machine.
+         */
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkTapeReserve(1 + Integer.BYTES);
+            machine.requireStackSize(1);
+            machine.checkTapeReserve(1);
             machine.advanceInstructionPointer();
             
-            final int address = 
-                    machine.readWordFromTape(machine.getInstructionPointer());
+            final int address = machine.pop();
             
             machine.advanceInstructionPointer(Integer.BYTES);
             machine.push(machine.getInstructionPointer());
@@ -305,6 +319,7 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
+            machine.requireStackSize(1);
             machine.checkTapeReserve(1);
             machine.advanceInstructionPointer();
             
@@ -488,7 +503,7 @@ public final class MachineLanguageSpecification {
                         machine.readWordFromTape(
                                 machine.getInstructionPointer());
                 
-                machine.setInstructionPointer(address);
+                machine.setInstructionPointer(address); 
             }
         }
     }
@@ -501,8 +516,38 @@ public final class MachineLanguageSpecification {
             machine.checkTapeReserve(1);
             machine.requireStackSize(1);
             machine.advanceInstructionPointer();
-            machine.printNumber(machine.pop());
+            
+            final int stringLength = machine.pop();
+            final int startAddress = machine.pop();
+            
+            System.out.println(processStringPrint(machine,
+                                                  stringLength,
+                                                  startAddress));
         }
+    }
+    
+    private static String processStringPrint(final SimpleStackMachine machine,
+                                             final int stringLength,
+                                             final int startAddress) {
+        final int numberOfWords = 
+                stringLength * Character.BYTES + 
+               (stringLength % 2 == 0 ? 0 : 1);
+        
+        final int[] words = new int[numberOfWords];
+        
+        for (int i = 0; i < words.length; i++) {
+            words[i] = machine.readWordFromTape(startAddress + i);
+        }
+        
+        final char[] characterData = new char[stringLength];
+        
+        for (int i = 0; i < characterData.length; ++i) {
+            final int word = words[i / Character.BYTES];
+            final int diffIndex = i % Character.BYTES == 0 ? 0 : 1;
+            characterData[i] = (char)(words[i / 2 + diffIndex]);
+        }
+        
+        return new String(characterData);
     }
     
     public static final class PrintStringInstructionImplementation 
