@@ -228,10 +228,10 @@ public class SimpleStackMachine {
             throw new StackMachineException(exceptionMessage);
         }
         
-        final int word0 = Byte.toUnsignedInt(tape[address + 0]) << 0;
-        final int word1 = Byte.toUnsignedInt(tape[address + 1]) << 8;
-        final int word2 = Byte.toUnsignedInt(tape[address + 2]) << 16;
-        final int word3 = Byte.toUnsignedInt(tape[address + 3]) << 24;
+        final int word0 = Byte.toUnsignedInt(tape[address + 3]) << 0;
+        final int word1 = Byte.toUnsignedInt(tape[address + 2]) << 8;
+        final int word2 = Byte.toUnsignedInt(tape[address + 1]) << 16;
+        final int word3 = Byte.toUnsignedInt(tape[address + 0]) << 24;
         
         return word0 |
                word1 |

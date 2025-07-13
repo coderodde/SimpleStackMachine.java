@@ -10,9 +10,9 @@ public class MachineLanguageSpecificationTest {
         final CodeBuilder cb = new CodeBuilder(1000);
         
         cb.emit(Operation.PUSH.getOpcodeByte());
-        cb.emit(6);
-        cb.emit(Operation.PUSH.getOpcodeByte());
         cb.emit(900);
+        cb.emit(Operation.PUSH.getOpcodeByte());
+        cb.emit(6);
         cb.emit(Operation.PRINT_STRING.getOpcodeByte());
         cb.emit(Operation.HALT.getOpcodeByte());
         cb.emit("Hello!", 900);
