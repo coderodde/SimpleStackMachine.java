@@ -195,7 +195,10 @@ public class SimpleStackMachine {
     
     private void executeImpl() {
         final byte opcode = tape[instructionPointer];
-//        final InstructionImplementation impl = Operation.
+        final Operation operation = Operation.getOperation(opcode);
+        final InstructionImplementation impl = operation.getImpl();
+        
+        impl.execute(this);
     }
     
     public static void main(String[] args) {
@@ -225,15 +228,15 @@ public class SimpleStackMachine {
             throw new StackMachineException(exceptionMessage);
         }
         
-        final int nb0 = Byte.toUnsignedInt(tape[address]);
-        final int nb1 = Byte.toUnsignedInt(tape[address + 1]) << 8;
-        final int nb2 = Byte.toUnsignedInt(tape[address + 2]) << 16;
-        final int nb3 = Byte.toUnsignedInt(tape[address + 3]) << 24;
+        final int word0 = Byte.toUnsignedInt(tape[address + 0]) << 0;
+        final int word1 = Byte.toUnsignedInt(tape[address + 1]) << 8;
+        final int word2 = Byte.toUnsignedInt(tape[address + 2]) << 16;
+        final int word3 = Byte.toUnsignedInt(tape[address + 3]) << 24;
         
-        return nb0 |
-               nb1 |
-               nb2 |
-               nb3;
+        return word0 |
+               word1 |
+               word2 |
+               word3;
     }
     
     void writeWordToTape(final int address, int word) {

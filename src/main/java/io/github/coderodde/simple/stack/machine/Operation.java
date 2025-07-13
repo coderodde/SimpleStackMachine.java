@@ -82,23 +82,45 @@ public enum Operation {
     private static final Map<String, Operation> mapOperationNameToOperationEnum 
             = new HashMap<>();
     
+    private static final Map<Byte, Operation> mapOperationByteToOperatoinEnum = 
+            new HashMap<>();
+    
+    private final String opcodeName;
     private final byte opcodeByte;
     private final InstructionImplementation impl;
     
-    private Operation(final String name, 
+    private Operation(final String opcodeName, 
                       final byte opcodeByte,
                       final InstructionImplementation impl) {
+        this.opcodeName = opcodeName;
         this.opcodeByte = opcodeByte;
         this.impl = impl;
     }
     
-    public Operation getOperation(final String operationName) {
+    public InstructionImplementation getImpl() {
+        return this.impl;
+    }
+    
+    public String getOperationName() {
+        return opcodeName;
+    }
+    
+    public byte getOpcodeByte() {
+        return this.opcodeByte;
+    }
+    
+    public static Operation getOperation(final String operationName) {
         return mapOperationNameToOperationEnum.get(operationName);
+    }
+    
+    public static Operation getOperation(final byte opcode) {
+        return mapOperationByteToOperatoinEnum.get(opcode);
     }
     
     static {
         for (final Operation o : Operation.values()) {
             mapOperationNameToOperationEnum.put(o.name(), o);
+            mapOperationByteToOperatoinEnum.put(o.opcodeByte, o);
         }
     }
 }

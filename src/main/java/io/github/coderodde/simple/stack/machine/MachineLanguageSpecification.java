@@ -24,12 +24,13 @@ public final class MachineLanguageSpecification {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
-            machine.checkTapeReserve(1 + Long.BYTES);
+            machine.checkTapeReserve(1 + Integer.BYTES);
             machine.advanceInstructionPointer();
             
             final int number = 
                     machine.readWordFromTape(machine.getInstructionPointer());
             
+            machine.advanceInstructionPointer(Integer.BYTES);
             machine.push(number);
         }
     }
@@ -508,13 +509,13 @@ public final class MachineLanguageSpecification {
         }
     }
     
-    public static final class PrintNumberInstructionImplementation 
+    public static final class PrintStringInstructionImplementation 
             implements InstructionImplementation {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
-            machine.requireStackSize(1);
+            machine.requireStackSize(2);
             machine.advanceInstructionPointer();
             
             final int stringLength = machine.pop();
@@ -530,66 +531,48 @@ public final class MachineLanguageSpecification {
                                              final int stringLength,
                                              final int startAddress) {
         final int numberOfWords = 
-                stringLength * Character.BYTES + 
+                stringLength / Character.BYTES + 
                (stringLength % 2 == 0 ? 0 : 1);
         
         final int[] words = new int[numberOfWords];
         
         for (int i = 0; i < words.length; i++) {
-            words[i] = machine.readWordFromTape(startAddress + i);
+            words[i] = 
+                    machine.readWordFromTape(startAddress + Integer.BYTES * i);
         }
         
         final char[] characterData = new char[stringLength];
         
+        int currentWordIndex = 0;
+        
         for (int i = 0; i < characterData.length; ++i) {
-            final int word = words[i / Character.BYTES];
-            final int diffIndex = i % Character.BYTES == 0 ? 0 : 1;
-            characterData[i] = (char)(words[i / 2 + diffIndex]);
+            final int currentWord = words[currentWordIndex];
+            final int characterIndex = i == 0 ? 0 : 1;
+            
+            if (characterIndex == 0) {
+                characterData[i] = (char)(currentWord & 0xff);
+            } else {
+                characterData[i] = (char)((currentWord >> Byte.SIZE) & 0xff);
+            }
+            
+            if (i % Character.BYTES == 1) {
+                currentWordIndex++;
+            }
         }
         
         return new String(characterData);
     }
     
-    public static final class PrintStringInstructionImplementation 
+    public static final class PrintNumberInstructionImplementation 
             implements InstructionImplementation {
         
         @Override
         public void execute(final SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
-            machine.requireStackSize(2);
+            machine.requireStackSize(1);
             machine.advanceInstructionPointer();
             
-            final int numberOfChars    = (int) machine.pop();
-            final int stringStartIndex = (int) machine.pop();
-            final int numberOfNumbers  = 
-                    (int)(numberOfChars / Long.BYTES 
-                       + (numberOfChars % Long.BYTES == 0 ? 0 : 1));
-            
-            final long[] stringData = new long[numberOfNumbers];
-            
-            for (int p = stringStartIndex, i = 0; i < numberOfNumbers; ++i) {
-                stringData[i] = machine.readNumber();
-                machine.advanceInstructionPointer(Long.BYTES);
-            }
-            
-            final byte[] asciiString = new byte[numberOfChars];
-            
-            for (int byteIndex = 0; byteIndex < numberOfChars; ++byteIndex) {
-                final long textChunk = stringData[byteIndex / Long.BYTES];
-                final byte byteChar  = 
-                        (byte)(((textChunk) >>> 
-                                 Byte.SIZE * (byteIndex % Long.BYTES)) & 0xff);
-                
-                asciiString[byteIndex] = byteChar;
-            }
-            
-            final StringBuilder sb = new StringBuilder(numberOfChars);
-            
-            for (int i = 0; i < asciiString.length; ++i) {
-                sb.append((char)(asciiString[i]));
-            }
-            
-            System.out.println(sb.toString());
+            System.out.println(machine.pop());
         }
     }
     
@@ -598,19 +581,26 @@ public final class MachineLanguageSpecification {
 
         @Override
         public void execute(SimpleStackMachine machine) {
-            throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+            machine.checkTapeReserve(1);
+            machine.requireStackSize(2);
+            machine.advanceInstructionPointer();
+            
+            final int stringLength  = machine.pop();
+            final int stringAddress = machine.pop();
+            
+            
         }
     }
     
-    public static final class ReadNumberInstructionImplementation 
-            implements InstructionImplementation {
-
-        @Override
-        public void execute(SimpleStackMachine machine) {
-            machine.checkTapeReserve(1);
-            machine.requireStackSize(1);
-            machine.advanceInstructionPointer();
-            machine.readNumber();
-        }
-    }
+//    public static final class ReadNumberInstructionImplementation 
+//            implements InstructionImplementation {
+//
+//        @Override
+//        public void execute(SimpleStackMachine machine) {
+//            machine.checkTapeReserve(1);
+//            machine.requireStackSize(1);
+//            machine.advanceInstructionPointer();
+//            machine.readNumber();
+//        }
+//    }
 }
