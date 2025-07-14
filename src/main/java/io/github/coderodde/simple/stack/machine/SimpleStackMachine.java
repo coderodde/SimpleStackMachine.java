@@ -173,37 +173,12 @@ public class SimpleStackMachine {
         final SimpleStackMachine m = new SimpleStackMachine();
         CodeBuilder cb = new CodeBuilder(64);
 
-        final int ENTRY_POINT = 0;
-        final int SUM_FUNC_ADDR = 20;
-
-// ENTRY POINT:
-// read first int
-        cb.setInstructionPointer(ENTRY_POINT);
-        cb.emit(Operation.READ_INT.getOpcodeByte()); // read first integer
-
-// read second int
-        cb.emit(Operation.READ_INT.getOpcodeByte()); // read second integer
-
-// call sum function at SUM_FUNC_ADDR
-        cb.emit(Operation.CALL.getOpcodeByte());
-        cb.emit(SUM_FUNC_ADDR);
-
-// print result (sum)
-        cb.emit(Operation.PRINT_INT.getOpcodeByte());
-
-// halt
-        cb.emit(Operation.HALT.getOpcodeByte());
-
-// SUM FUNCTION at SUM_FUNC_ADDR:
-// Stack layout: top -> second integer, below -> first integer
-        cb.setInstructionPointer(SUM_FUNC_ADDR);
-
-// add the two integers on the stack
+        cb.emit(Operation.READ_INT.getOpcodeByte());
+        cb.emit(Operation.READ_INT.getOpcodeByte());
         cb.emit(Operation.ADD.getOpcodeByte());
-
-// return the result
-        cb.emit(Operation.RET.getOpcodeByte());
-
+        cb.emit(Operation.PRINT_INT.getOpcodeByte());
+        cb.emit(Operation.HALT.getOpcodeByte());
+        
         m.execute(cb.toByteArray());
     }
 

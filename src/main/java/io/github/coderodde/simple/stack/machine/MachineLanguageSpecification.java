@@ -560,6 +560,7 @@ public final class MachineLanguageSpecification {
         @Override
         public void execute(SimpleStackMachine machine) {
             machine.push(machine.readInt());
+            machine.advanceInstructionPointer();
         }
     }
     
