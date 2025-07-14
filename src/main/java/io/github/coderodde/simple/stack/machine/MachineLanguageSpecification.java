@@ -217,6 +217,7 @@ public final class MachineLanguageSpecification {
         public void execute(final SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
             machine.requireStackSize(2);
+            machine.flags().unsetAll();
             machine.advanceInstructionPointer();
             
             final int number1 = machine.pop();
@@ -245,6 +246,7 @@ public final class MachineLanguageSpecification {
         public void execute(final SimpleStackMachine machine) {
             machine.checkTapeReserve(1);
             machine.requireStackSize(1);
+            machine.flags().unsetAll();
             final long number = machine.pop();
             
             if (number > 0L) {
@@ -530,37 +532,13 @@ public final class MachineLanguageSpecification {
     private static String processStringPrint(final SimpleStackMachine machine,
                                              final int stringLength,
                                              final int startAddress) {
-        final int numberOfWords = 
-                stringLength / Character.BYTES + 
-               (stringLength % 2 == 0 ? 0 : 1);
+        final byte[] stringData = new byte[stringLength];
         
-        final int[] words = new int[numberOfWords];
-        
-        for (int i = 0; i < words.length; i++) {
-            words[i] = 
-                    machine.readWordFromTape(startAddress + Integer.BYTES * i);
+        for (int i = 0; i < stringData.length; ++i) {
+            stringData[i] = machine.readByteFromTape(startAddress + i);
         }
         
-        final char[] characterData = new char[stringLength];
-        
-        int currentWordIndex = 0;
-        
-        for (int i = 0; i < characterData.length; ++i) {
-            final int currentWord = words[currentWordIndex];
-            final int characterIndex = i == 0 ? 0 : 1;
-            
-            if (characterIndex == 0) {
-                characterData[i] = (char)(currentWord & 0xff);
-            } else {
-                characterData[i] = (char)((currentWord >> Byte.SIZE) & 0xff);
-            }
-            
-            if (i % Character.BYTES == 1) {
-                currentWordIndex++;
-            }
-        }
-        
-        return new String(characterData);
+        return new String(stringData);
     }
     
     public static final class PrintNumberInstructionImplementation 
@@ -576,6 +554,15 @@ public final class MachineLanguageSpecification {
         }
     }
     
+    public static final class ReadNumberInstructionImplementation 
+            implements InstructionImplementation {
+
+        @Override
+        public void execute(SimpleStackMachine machine) {
+            machine.push(machine.readInt());
+        }
+    }
+    
     public static final class ReadStringInstructionImplementation 
             implements InstructionImplementation {
 
@@ -585,22 +572,23 @@ public final class MachineLanguageSpecification {
             machine.requireStackSize(2);
             machine.advanceInstructionPointer();
             
-            final int stringLength  = machine.pop();
+            final int bufferLength  = machine.pop();
             final int stringAddress = machine.pop();
             
+            final String text = machine.readString();
             
+            if (text.length() > bufferLength) {
+                machine.push(Integer.MIN_VALUE);
+            } else {
+                machine.push(text.length());
+                
+                final byte[] stringData = text.getBytes();
+                
+                for (int i = 0; i < stringData.length; ++i) {
+                    machine.writeByteToTape(stringAddress + i,
+                                            stringData[i]);
+                }
+            }
         }
     }
-    
-//    public static final class ReadNumberInstructionImplementation 
-//            implements InstructionImplementation {
-//
-//        @Override
-//        public void execute(SimpleStackMachine machine) {
-//            machine.checkTapeReserve(1);
-//            machine.requireStackSize(1);
-//            machine.advanceInstructionPointer();
-//            machine.readNumber();
-//        }
-//    }
 }

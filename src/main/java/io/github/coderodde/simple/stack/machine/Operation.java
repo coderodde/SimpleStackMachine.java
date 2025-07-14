@@ -25,6 +25,8 @@ import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.Pop
 import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.PrintNumberInstructionImplementation;
 import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.PrintStringInstructionImplementation;
 import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.PushInstructionImplementation;
+import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.ReadNumberInstructionImplementation;
+import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.ReadStringInstructionImplementation;
 import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.ReturnInstructionImplementation;
 import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.StoreInstructionImplementation;
 import io.github.coderodde.simple.stack.machine.MachineLanguageSpecification.SubInstructionImplementation;
@@ -45,7 +47,7 @@ public enum Operation {
     NOP   ("nop"  , (byte) 0x0, new NopInstructionImplementation()),
     PUSH  ("push" , (byte) 0x1, new PushInstructionImplementation()),
     POP   ("pop"  , (byte) 0x2, new PopInstructionImplementation()), 
-    CONST ("const", (byte) 0x0, new ConstInstructionImplementation()),
+    CONST ("const", (byte) 0x3, new ConstInstructionImplementation()),
     LOAD  ("load" , (byte) 0x4, new LoadInstructionImplementation()),
     STORE ("store", (byte) 0x5, new StoreInstructionImplementation()),
     
@@ -75,14 +77,14 @@ public enum Operation {
     
     PRINT_INT    ("iout", (byte) 0x15, new PrintNumberInstructionImplementation()),
     PRINT_STRING ("sout", (byte) 0x16, new PrintStringInstructionImplementation()),
-    READ_INT     ("iin",  (byte) 0x17, null), 
-    READ_STRING  ("sin",  (byte) 0x18, null), 
+    READ_INT     ("iin",  (byte) 0x17, new ReadNumberInstructionImplementation()), 
+    READ_STRING  ("sin",  (byte) 0x18, new ReadStringInstructionImplementation()), 
     HALT         ("halt", (byte) 0xff, new HaltInstructionImplementation());
     
     private static final Map<String, Operation> mapOperationNameToOperationEnum 
             = new HashMap<>();
     
-    private static final Map<Byte, Operation> mapOperationByteToOperatoinEnum = 
+    private static final Map<Byte, Operation> mapOperationByteToOperationEnum = 
             new HashMap<>();
     
     private final String opcodeName;
@@ -114,13 +116,13 @@ public enum Operation {
     }
     
     public static Operation getOperation(final byte opcode) {
-        return mapOperationByteToOperatoinEnum.get(opcode);
+        return mapOperationByteToOperationEnum.get(opcode);
     }
     
     static {
         for (final Operation o : Operation.values()) {
-            mapOperationNameToOperationEnum.put(o.name(), o);
-            mapOperationByteToOperatoinEnum.put(o.opcodeByte, o);
+            mapOperationNameToOperationEnum.put(o.getOperationName(), o);
+            mapOperationByteToOperationEnum.put(o.opcodeByte, o);
         }
     }
 }
